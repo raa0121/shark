@@ -6,6 +6,7 @@ import (
 	"flag"
 	_ "image/png"
 	"log"
+	"time"
 
 	"github.com/hajimehoshi/ebiten/v2"
 	"github.com/hajimehoshi/ebiten/v2/ebitenutil"
@@ -24,6 +25,9 @@ var RightClickSprites embed.FS
 //go:embed sprites/drag/*
 var DragSprites embed.FS
 
+//go:embed sprites/hungry/*
+var HungrySprites embed.FS
+
 type Anim struct {
 	Frames []*ebiten.Image
 }
@@ -38,6 +42,9 @@ type Game struct {
 	PreviousMousePos Vector
 	WinStartPos      Vector
 	MouseStartPos    Vector
+
+	LastFed                time.Time
+	NanosecondsUntilHungry time.Duration
 }
 
 type Vector struct{ x, y int }
@@ -60,6 +67,46 @@ func GlobalCursorPosition() Vector {
 }
 
 func (g *Game) Update() error {
+	isHungry := false
+
+	if time.Now().Sub(g.LastFed) >= g.NanosecondsUntilHungry {
+		// The only allowed interaction when hungry is right-click to feed.
+		isHungry = true
+		g.IsDragging = false
+		if g.CurrentAnim != Hungry {
+			g.CurrentAnim = Hungry
+			g.Ticks = 0
+			g.CurrentFrame = 0
+			return nil
+		} else if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
+			g.CurrentAnim = Feeding
+			g.Ticks = 0
+			g.CurrentFrame = 0
+			g.LastFed = time.Now()
+			return nil
+		}
+	}
+
+	if !isHungry {
+		handleNonHungryInputs(g)
+	}
+
+	g.Ticks++
+	if g.Ticks < 10 {
+		return nil
+	}
+	g.Ticks = 0
+	g.CurrentFrame++
+	if g.CurrentFrame >= len(g.CurrentAnim.Frames) {
+		g.CurrentFrame = 0
+		if g.CurrentAnim == RightClick || g.CurrentAnim == Feeding {
+			g.CurrentAnim = Idle
+		}
+	}
+	return nil
+}
+
+func handleNonHungryInputs(g *Game) {
 	if inpututil.IsMouseButtonJustPressed(ebiten.MouseButtonRight) {
 		if g.CurrentAnim == Idle {
 			g.CurrentAnim = RightClick
@@ -89,28 +136,16 @@ func (g *Game) Update() error {
 		newWinPos := g.WinStartPos.Add(mousePos.Subtract(g.MouseStartPos))
 		ebiten.SetWindowPosition(newWinPos.x, newWinPos.y)
 	}
+
 	g.PreviousMousePos = mousePos
-
-	g.Ticks++
-	if g.Ticks < 10 {
-		return nil
-	}
-
-	g.Ticks = 0
-	g.CurrentFrame++
-	if g.CurrentFrame >= len(g.CurrentAnim.Frames) {
-		g.CurrentFrame = 0
-		if g.CurrentAnim == RightClick {
-			g.CurrentAnim = Idle
-		}
-	}
-	return nil
 }
 
 func (g *Game) Draw(screen *ebiten.Image) {
 	screen.DrawImage(g.CurrentAnim.Frames[g.CurrentFrame], nil)
 	/*
 		debugStr := ""
+		debugStr += fmt.Sprintf("%v\n", g.Ticks)
+		debugStr += fmt.Sprintf("%v\n", g.LastFed)
 		if ebiten.IsMouseButtonPressed(ebiten.MouseButtonLeft) {
 			debugStr += "Dragging\n"
 		}
@@ -140,23 +175,34 @@ func NewAnim(sprites embed.FS, subdir string) *Anim {
 	return &Anim{frames}
 }
 
-var Idle, RightClick, Drag *Anim
+var Idle, RightClick, Drag, Hungry, Feeding *Anim
 
 func init() {
 	Idle = NewAnim(IdleSprites, "idle")
 	Drag = NewAnim(DragSprites, "drag")
 	RightClick = NewAnim(RightClickSprites, "right-click")
+	Hungry = NewAnim(HungrySprites, "hungry")
+	Feeding = NewAnim(RightClickSprites, "right-click")
 }
 
 func main() {
 	var sizeFlag int
+	var secondsUntilHungryFlag int64
 	flag.IntVar(
-		&sizeFlag, "size", 2, "Size multiplier: make Gura as big as you want.",
+		&sizeFlag, "size", 2, "Size multiplier: make Gura as big as you want",
+	)
+	flag.Int64Var(
+		&secondsUntilHungryFlag,
+		"hungry",
+		3600,
+		"The number of seconds it takes for Gura to go hungry",
 	)
 	flag.Parse()
 
 	var game Game
 	game.CurrentAnim = Idle
+	game.LastFed = time.Now()
+	game.NanosecondsUntilHungry = time.Duration(secondsUntilHungryFlag) * 1_000_000_000
 
 	ebiten.SetWindowSize(SPRITE_X*sizeFlag, SPRITE_Y*sizeFlag)
 	ebiten.SetWindowTitle("Shark!")

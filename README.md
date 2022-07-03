@@ -6,9 +6,7 @@ This is a PoC "desktop pet" à la [shimeji][1] using [ebitengine][2] that runs
 on Windows, Linux, and macOS. It currently has only 3 animations: idle
 (default), left-click dragging, and right-click.
 
-Here's a demo video:
-
-https://user-images.githubusercontent.com/1446315/176439983-091dec3d-bc36-4ae3-8b78-2a2a7f11e90d.mp4
+Here's a [demo video](https://user-images.githubusercontent.com/1446315/176439983-091dec3d-bc36-4ae3-8b78-2a2a7f11e90d.mp4).
 
 Fair warning: I'm a Go noob who mostly has no idea what he's doing.
 Read the source code at your own peril.
@@ -32,9 +30,7 @@ Simply run the provided binary for your OS. Mac & Linux users may need to first
 make the file executable with `chmod +x <file-name>`.
 
 If run from a terminal, use the `-h` argument to see available options.
-Currently there's only a `-size` argument which changes how big your shark will
-be rendered. Windows users can create a shortcut which lets you specify your
-desired arguments.
+Windows users can [create a shortcut][7] to save their desired arguments.
 
 # Compile from source
 
@@ -70,6 +66,7 @@ this program. If not, see <https://www.gnu.org/licenses/>.
 [4]: https://www.facebook.com/meexway
 [5]: https://github.com/nhanb/shark/releases/latest
 [6]: https://ebiten.org/documents/install.html
+[7]: https://superuser.com/questions/29569/how-to-add-command-line-options-to-shortcut
 
 [srht]: https://builds.sr.ht/~nhanb/shark/commits/master
 [gh]: https://github.com/nhanb/shark/actions/workflows/main.yml
